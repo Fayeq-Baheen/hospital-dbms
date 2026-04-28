@@ -4,9 +4,9 @@
 -- =====================================================
 
 -- ایجاد دیتابیس
-DROP DATABASE IF EXISTS HospitalDB;
-CREATE DATABASE HospitalDB;
-\c HospitalDB;
+-- DROP DATABASE IF EXISTS HospitalDB;
+-- CREATE DATABASE HospitalDB;
+-- \c HospitalDB;
 
 -- =====================================================
 -- 1. TABLES (جداول)
