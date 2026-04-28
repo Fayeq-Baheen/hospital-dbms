@@ -55,13 +55,13 @@ CREATE TABLE Patients (
     father_name VARCHAR(100),
     gender VARCHAR(10) CHECK (gender IN ('مرد', 'زن', 'سایر')),
     birth_date DATE,
-    age INT GENERATED ALWAYS AS (EXTRACT(YEAR FROM AGE(CURRENT_DATE, birth_date))) STORED,
+    -- age INT GENERATED ALWAYS AS ((EXTRACT (YEAR FROM CURRENT_DATE)) - (EXTRACT (YEAR FROM birth_date))) STORED,
     phone VARCHAR(20),
     address TEXT,
     national_id VARCHAR(50) UNIQUE,
     blood_type VARCHAR(15) CHECK (blood_type IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')),
     emergency_contact VARCHAR(100),
-    register_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    register_date TIME DEFAULT CURRENT_TIME,
     is_active BOOLEAN DEFAULT TRUE
 );
 
@@ -250,7 +250,17 @@ CREATE TABLE Radiology (
     FOREIGN KEY (radiologist_id) REFERENCES Staff(staff_id) ON DELETE SET NULL
 );
 
--- 17. Surgeries
+-- 17. Operating_Theatres
+CREATE TABLE Operating_Theatres (
+    theatre_id SERIAL PRIMARY KEY,
+    theatre_name VARCHAR(100) NOT NULL,
+    location VARCHAR(100),
+    status VARCHAR(20) DEFAULT 'Available' CHECK (status IN ('Available', 'In Use', 'Maintenance', 'Sterilizing')),
+    equipment_status VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 18. Surgeries
 CREATE TABLE Surgeries (
     surgery_id SERIAL PRIMARY KEY,
     patient_id INT NOT NULL,
@@ -269,15 +279,7 @@ CREATE TABLE Surgeries (
     FOREIGN KEY (anesthesiologist_id) REFERENCES Doctors(doctor_id) ON DELETE SET NULL
 );
 
--- 18. Operating_Theatres
-CREATE TABLE Operating_Theatres (
-    theatre_id SERIAL PRIMARY KEY,
-    theatre_name VARCHAR(100) NOT NULL,
-    location VARCHAR(100),
-    status VARCHAR(20) DEFAULT 'Available' CHECK (status IN ('Available', 'In Use', 'Maintenance', 'Sterilizing')),
-    equipment_status VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+
 
 -- 19. Insurance
 CREATE TABLE Insurance (
@@ -348,6 +350,70 @@ CREATE TABLE Audit_Log (
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE SET NULL
 );
 
+-- 24. Beds
+CREATE TABLE Beds (
+	bed_id SERIAL PRIMARY KEY,
+	room_id INT NOT NULL,
+	bed_number VARCHAR(20) NOT NULL,
+	bed_status VARCHAR(20) CHECK (bed_status IN ('Available', 'Occupied', 'Maintenance')),
+	FOREIGN KEY (room_id) REFERENCES Rooms(room_id) ON DELETE CASCADE
+);
+
+-- 25. Nurse
+CREATE TABLE Nurse (
+	nurse_id SERIAL PRIMARY KEY,
+	nurse_name VARCHAR(50) NOT NULL,
+	phone INT,
+	email VARCHAR(150) UNIQUE,
+	hire_date DATE DEFAULT CURRENT_DATE
+);
+
+-- 26. Nurse_Notes
+CREATE TABLE Nurse_notes (
+	note_id SERIAL PRIMARY KEY,
+	admission_id INT NOT NULL,
+	nurse_id INT NOT NULL,
+	note TEXT,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (admission_id) REFERENCES Admissions(admission_id),
+	FOREIGN KEY (nurse_id) REFERENCES Nurse(nurse_id)
+);
+
+-- 27. Equipments
+CREATE TABLE Equipment (
+	equipment_id SERIAL PRIMARY KEY,
+	name VARCHAR(100) NOT NULL,
+	department_id INT NOT NULL,
+	quantity INT NOT NULL,
+	status VARCHAR(20) CHECK (status IN ('Available', 'In Use', 'Maintenance')),
+	purchase_date DATE,
+	warranty_expiry DATE,
+	FOREIGN KEY (department_id) REFERENCES Departments(department_id)
+);
+
+-- 28. Roles
+CREATE TABLE Roles (
+	role_id SERIAL PRIMARY KEY,
+	role_name VARCHAR(50) NOT NULL,
+	description TEXT
+);
+
+-- 29.Permissions
+CREATE TABLE Permissions (
+	permission_id SERIAL PRIMARY KEY,
+	permission_name VARCHAR(100) NOT NULL,
+	modules VARCHAR(100),
+	description TEXT
+);
+
+-- 30. Role_Permissions
+CREATE TABLE Role_Permissions (
+	role_id INT PRIMARY KEY,
+	permission_id INT UNIQUE,
+	FOREIGN KEY (role_id) REFERENCES Roles(role_id),
+	FOREIGN KEY (permission_id) REFERENCES Permissions(permission_id)
+);
+
 -- =====================================================
 -- 2. INDEXES
 -- =====================================================
@@ -381,6 +447,8 @@ CREATE INDEX idx_inventory_date ON Inventory_Transactions(transaction_date);
 CREATE INDEX idx_inventory_medicine ON Inventory_Transactions(medicine_id, transaction_type);
 CREATE INDEX idx_audit_table ON Audit_Log(table_name, record_id);
 CREATE INDEX idx_audit_date ON Audit_Log(created_at);
+CREATE INDEX idx_nurse_name ON Nurse(nurse_name);
+CREATE INDEX idx_equipment_name ON Equipment(name);
 
 -- =====================================================
 -- 3. VIEWS
@@ -393,7 +461,7 @@ SELECT
     p.father_name,
     p.gender,
     p.birth_date,
-    p.age,
+    (EXTRACT (YEAR FROM CURRENT_DATE)) - (EXTRACT (YEAR FROM p.birth_date)) AS age,
     p.phone,
     p.address,
     p.national_id,
@@ -893,22 +961,22 @@ SELECT setval('lab_tests_test_id_seq', 2);
 -- =====================================================
 -- 7. نمایش خلاصه دیتابیس
 -- =====================================================
-SELECT '==========================================' AS "";
+SELECT '==========================================' AS " ";
 SELECT 'DATABASE CREATED SUCCESSFULLY!' AS "Status";
-SELECT '==========================================' AS "";
-SELECT 'نسخه مخصوص افغانستان' AS "";
-SELECT 'واحد پول: افغانی (AFN)' AS "";
-SELECT 'شماره تماس: فرمت افغانستان' AS "";
-SELECT '==========================================' AS "";
+SELECT '==========================================' AS " ";
+SELECT 'نسخه مخصوص افغانستان' AS " ";
+SELECT 'واحد پول: افغانی (AFN)' AS " ";
+SELECT 'شماره تماس: فرمت افغانستان' AS " ";
+SELECT '==========================================' AS " ";
 
 -- =====================================================
 -- 8. کوئری‌های تست
 -- =====================================================
 
-SELECT * FROM Patients LIMIT 5;
+SELECT * FROM v_PatientFullInfo LIMIT 5;
 SELECT * FROM Appointments WHERE DATE(appointment_date) = CURRENT_DATE;
 SELECT * FROM v_DailyStatistics;
-SELECT * FROM sp_RevenueReport(CURRENT_DATE - INTERVAL '30 days', CURRENT_DATE);
+SELECT * FROM sp_RevenueReport(DATE(CURRENT_DATE - INTERVAL '30 days'), CURRENT_DATE);
 
 -- =====================================================
 -- END OF SCRIPT
